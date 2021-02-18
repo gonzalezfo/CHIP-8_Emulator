@@ -19,7 +19,7 @@ Chip8::~Chip8()
 void Chip8::Initialize()
 {
 	pc		= 0x200;		// Program Counter Start Address
-	opcode	= 0x0;		
+	opcode		= 0x0;		
 	I		= 0x0;
 	sp		= 0x0;
 
@@ -39,7 +39,7 @@ void Chip8::Initialize()
 	// Load fontset
 	for (int i = 0; i < 80; ++i)
 	{
-		memory[i] = chip8_fontset[i];
+	    memory[i] = chip8_fontset[i];
 	}
 
 	// Reset timers
