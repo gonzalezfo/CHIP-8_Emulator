@@ -2,7 +2,7 @@ solution("CHIP-8")
   language("c++")
   configurations {"Debug", "Release"}
   platforms "x64"
-  includedirs { "include" }
+  includedirs { "include", "deps/include/SDL2-2.0.14/include" }
   location "build"
   objdir "build/obj"
 
@@ -20,5 +20,5 @@ solution("CHIP-8")
   project("demo")
     kind "ConsoleApp"
     files { "src/*.cpp", "include/*.h" }
-    --libdirs {}
+    libdirs { "deps/include/SDL2-2.0.14/lib/x64/SDL2" }
     --links {}
