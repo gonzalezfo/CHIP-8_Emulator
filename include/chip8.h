@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 class Chip8
 {
 public:
@@ -7,6 +9,7 @@ public:
 	~Chip8();
 
 	void Initialize();
+	bool LoadGame(const std::string& filepath);
 
 public:
 	unsigned short opcode; // 35 opcodes in total
