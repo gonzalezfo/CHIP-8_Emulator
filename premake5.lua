@@ -20,5 +20,5 @@ solution("CHIP-8")
   project("demo")
     kind "ConsoleApp"
     files { "src/*.cpp", "include/*.h" }
-    libdirs { "deps/include/SDL2-2.0.14/lib/x64/SDL2" }
-    --links {}
+    libdirs { "deps/include/SDL2-2.0.14/lib/x64" }
+    links {"SDL2"}
