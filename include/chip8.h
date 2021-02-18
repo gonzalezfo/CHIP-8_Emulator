@@ -10,6 +10,7 @@ public:
 
 	void Initialize();
 	bool LoadGame(const std::string& filepath);
+	void EmulateCycle();
 
 public:
 	unsigned short opcode; // 35 opcodes in total

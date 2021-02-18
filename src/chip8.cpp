@@ -19,7 +19,7 @@ Chip8::~Chip8()
 void Chip8::Initialize()
 {
 	pc		= 0x200;		// Program Counter Start Address
-	opcode		= 0x0;		
+	opcode	= 0x0;		
 	I		= 0x0;
 	sp		= 0x0;
 
@@ -54,7 +54,7 @@ bool Chip8::LoadGame(const std::string& filepath)
 	// Check parameter errors
 	if (filepath.empty())
 	{
-		std::cout << ("[ERROR]: File is NULL") << std::endl;
+		std::cout << "[ERROR]: File is NULL\n";
 		return false;
 	}
 
@@ -65,7 +65,7 @@ bool Chip8::LoadGame(const std::string& filepath)
 	// Checks if the vector has been filled
 	if (content.empty())
 	{
-		std::cout << ("[ERROR]: File is Empty or does not exist");
+		std::cout << "[ERROR]: File is Empty or does not exist\n";
 		return false;
 	}
 
@@ -75,6 +75,99 @@ bool Chip8::LoadGame(const std::string& filepath)
 	for (int i = 0; i < content.size(); ++i)
 	{
 		memory[i + 512] = content[i];
+	}
+}
+
+void Chip8::EmulateCycle()
+{
+	// Fetch opcode
+	opcode = memory[pc] << 8 | memory[pc + 1];
+
+	// Decode opcode
+	switch (opcode & 0xF000)
+	{
+	case 0x0000:
+		switch (opcode & 0x000F)
+		{
+			case 0x0000: // 0x00E0: Clears the screen        
+			  // Execute opcode
+			break;
+
+			case 0x000E: // 0x00EE: Returns from subroutine          
+			  // Execute opcode
+			break;
+
+			default:
+				std::cout << "[ERROR]: Unknown opcode [0x0000]: 0x" << opcode << '\n';
+		}
+	break;
+
+	case 0x2000: // 0x2NNN: calls the subroutine at address NNN
+		stack[sp] = pc;
+		++sp;
+		pc = opcode & 0x0FFF;
+	break;
+
+	case 0x8000:
+		switch (opcode & 0x000F)
+		{
+			case 0x004: // 0x8XY4: Adds the value of VY to VX. VF is 1 if there's a carry, else is 0
+				if (V[(opcode & 0x00F0) >> 4] > (0xFF - V[(opcode & 0x0F00) >> 8]))
+				{
+					V[0xF] = 1; //carry
+				}
+				else
+				{
+					V[0xF] = 0;
+				}
+				V[(opcode & 0x0F00) >> 8] += V[(opcode & 0x00F0) >> 4];
+				pc += 2;
+			break;
+
+			default:
+				std::cout << "[ERROR]: Unknown opcode [0x0000]: 0x" << opcode << '\n';
+		}
+	break;
+
+	case 0xF000:
+		switch (opcode & 0x00FF)
+		{
+			case 0x0033: // 0xFX33: Stores the Binary-coded decimal representation of VX at the addresses I, I plus 1, and I plus 2
+				memory[I]		= V[(opcode & 0x0F00) >> 8] / 100;
+				memory[I + 1]	= (V[(opcode & 0x0F00) >> 8] / 10) % 10;
+				memory[I + 2]	= (V[(opcode & 0x0F00) >> 8] % 100) % 10;
+				pc += 2;
+			break;
+
+			default:
+				std::cout << "[ERROR]: Unknown opcode [0x0000]: 0x" << opcode << '\n';
+		}
+	break;
+
+
+	case 0xA000: // ANNN: Sets I to the address NNN
+		I = opcode & 0x0FFF;
+		pc += 2;
+	break;
+
+
+	default:
+		std::cout << "[ERROR]: Unknown opcode: 0x" << opcode << '\n';
+	break;
+	}
+
+	if (delay_timer > 0)
+	{
+		--delay_timer;
+	}
+
+	if (sound_timer > 0)
+	{
+		if (sound_timer == 1)
+		{
+			std::cout << "[SOUND TIMER ALERT]\n";
+		}
+		--sound_timer;
 	}
 }
 
