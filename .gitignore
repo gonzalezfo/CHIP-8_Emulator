@@ -1,0 +1,10 @@
+# Directories
+.vs/
+bin/
+build/
+
+# Files
+*.user
+*.exe
+*.sln
+
