@@ -129,6 +129,40 @@ void Chip8::EmulateCycle()
 		}
 	break;
 
+	case 0xD000: /* Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels 
+				 and a height of N pixels. Each row of 8 pixels is read as bit-coded 
+				 starting from memory location I; I value doesn’t change after the 
+				 execution of this instruction. As described above, VF is set to 1 
+				 if any screen pixels are flipped from set to unset when the sprite is drawn, 
+				 and to 0 if that doesn’t happen. */
+	{
+		unsigned short x = V[(opcode & 0x0F00) >> 8]; 
+		unsigned short y = V[(opcode & 0x00F0) >> 4];
+		unsigned short height = opcode & 0x000F; 
+		unsigned short pixel;
+
+		V[0xF] = 0; // Reset register VF
+		for (int yline = 0; yline < height; yline++) // Loop over rows
+		{
+			pixel = memory[I + yline]; // Get pixel starting at I
+			for (int xline = 0; xline < 8; xline++) // Loop over 8 bytes of the row
+			{
+				if ((pixel & (0x80 >> xline)) != 0)
+				{
+					if (gfx[(x + xline + ((y + yline) * 64))] == 1)
+					{
+						V[0xF] = 1;
+					}
+					gfx[x + xline + ((y + yline) * 64)] ^= 1;
+				}
+			}
+		}
+		drawFlag = true;
+		pc += 2;
+	}
+	break;
+
+
 	case 0xF000:
 		switch (opcode & 0x00FF)
 		{
