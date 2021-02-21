@@ -249,11 +249,17 @@ void Chip8::EmulateCycle()
 	case 0xE:
 		if (NN == 0x9E) // EX9E: Skips the next instruction if the key stored in VX is pressed. 
 		{
-			
+			if (key[V[X]] != 0)
+			{
+				pc += 4;
+			}
 		}
 		else if (NN == 0xA1) // EXA1: Skips the next instruction if the key stored in VX isn't pressed.
 		{
-
+			if (key[V[X]] == 0)
+			{
+				pc += 4;
+			}
 		}
 		break;
 	case 0xF:
