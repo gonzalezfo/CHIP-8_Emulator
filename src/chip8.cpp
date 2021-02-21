@@ -221,6 +221,30 @@ void Chip8::EmulateCycle()
 					   execution of this instruction.As described above, VF is set to 1
 					   if any screen pixels are flipped from set to unset when the sprite is drawn,
 					   and to 0 if that doesn’t happen.*/
+	{
+		unsigned short x = V[X];
+		unsigned short y = V[Y];
+		unsigned short height = opcode & 0x000F;
+		unsigned short pixel;
+
+		V[N] = 0; // Reset register VF
+		for (int yline = 0; yline < height; yline++) // Loop over rows
+		{
+			pixel = memory[I + yline]; // Get pixel starting at I
+			for (int xline = 0; xline < 8; xline++) // Loop over 8 bytes of the row
+			{
+				if ((pixel & (0x80 >> xline)) != 0)
+				{
+					if (gfx[(x + xline + ((y + yline) * 64))] == 1)
+					{
+						V[N] = 1;
+					}
+					gfx[x + xline + ((y + yline) * 64)] ^= 1;
+				}
+			}
+		}
+	}
+		drawFlag = true;
 		break; 
 	case 0xE:
 		if (NN == 0x9E) // EX9E: Skips the next instruction if the key stored in VX is pressed. 
