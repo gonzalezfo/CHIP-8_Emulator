@@ -2,6 +2,8 @@
 
 #include <string>
 
+#define MEMORYSIZE 4096
+
 class Chip8
 {
 public:
@@ -14,7 +16,7 @@ public:
 
 public:
 	unsigned short opcode; // 35 opcodes in total
-	unsigned char memory[4096]; // 4K of memory
+	unsigned char memory[MEMORYSIZE]; // 4K of memory
 	unsigned char V[16]; // 15 8-bit general purpose registers + 1 carry flag
 
 	unsigned short I; // index register
