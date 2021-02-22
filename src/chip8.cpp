@@ -59,7 +59,7 @@ bool Chip8::LoadGame(const std::string& filepath)
 	// Check parameter errors
 	if (filepath.empty())
 	{
-		std::cout << "[ERROR]: File is NULL\n";
+		std::cout << "[ERROR]: Could not load the ROM\n";
 		return false;
 	}
 
@@ -70,7 +70,7 @@ bool Chip8::LoadGame(const std::string& filepath)
 	// Checks if the vector has been filled
 	if (content.empty())
 	{
-		std::cout << "[ERROR]: File is Empty or does not exist\n";
+		std::cout << "[ERROR]: Could not load the ROM or the content is corrupted\n";
 		return false;
 	}
 
@@ -114,24 +114,26 @@ void Chip8::EmulateCycle()
 	case 1: // 1NNN: Jumps to address NNN
 		pc = NNN;
 		break;
-	case 2:
+	case 2: // 0x2NNN: Calls subroutine at NNN.
+		stack[sp] = pc;
+		++sp;
 		break;
 	case 3: // 3XNN: Skips the next instruction if VX equals NN.
 		if (V[X] == NN)
 		{
-			pc = (pc + 2) & MEMORYSIZE;
+			pc = (pc + 2) & MEMORYSIZE - 1;
 		}
 		break;
 	case 4: // 4XNN: Skips the next instruction if VX doesn't equal NN
 		if (V[X] != NN)
 		{
-			pc = (pc + 2) & MEMORYSIZE;
+			pc = (pc + 2) & MEMORYSIZE - 1;
 		}
 		break;
 	case 5: // 5XY0: Skips the next instruction if VX equals VY
 		if (V[X] == V[Y])
 		{
-			pc = (pc + 2) & MEMORYSIZE;
+			pc = (pc + 2) & MEMORYSIZE - 1;
 		}
 		break;
 	case 6: // 6XNN: Sets VX to NN
@@ -204,7 +206,7 @@ void Chip8::EmulateCycle()
 	case 9: // 9XY0: Skips the next instruction if VX doesn't equal VY
 		if (V[X] != V[Y])
 		{
-			pc = (pc + 2) & MEMORYSIZE;
+			pc = (pc + 2) & MEMORYSIZE - 1;
 		}
 		break;
 	case 0xA: // ANNN: Sets I to the address NNN
@@ -214,6 +216,7 @@ void Chip8::EmulateCycle()
 		pc = NNN + V[0];
 		break;
 	case 0xC: // CXNN: Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+		V[X] = (rand() % 0xFF) & (opcode & 0x00FF);
 		break;
 	case 0xD: /* DXYN: Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels 
 					   and a height of N pixels.Each row of 8 pixels is read as bit - coded
@@ -243,8 +246,8 @@ void Chip8::EmulateCycle()
 				}
 			}
 		}
-	}
 		drawFlag = true;
+	}
 		break; 
 	case 0xE:
 		if (NN == 0x9E) // EX9E: Skips the next instruction if the key stored in VX is pressed. 
@@ -269,6 +272,22 @@ void Chip8::EmulateCycle()
 			V[X] = delay_timer;
 			break;
 		case 0x0A: // FX0A: A key press is awaited, and then stored in VX.
+		{
+			bool keyPress = false;
+
+			for (int i = 0; i < 16; ++i)
+			{
+				if (key[i] != 0)
+				{
+					V[X] = i;
+					keyPress = true;
+				}
+			}
+			if (!keyPress)
+			{
+				return;
+			}
+		}
 			break;
 		case 0x15: // FX15: Sets the delay timer to VX.
 			delay_timer = V[X];
@@ -283,6 +302,7 @@ void Chip8::EmulateCycle()
 			break;
 		case 0x29: /* FX29: Sets I to the location of the sprite for the character in VX. 
 							Characters 0-F (in hexadecimal) are represented by a 4x5 font. */
+			I = V[X] * 0x5;
 			break;
 		case 0x33: /* FX33: Stores the binary-coded decimal representation of VX, 
 							with the most significant of three digits at the address in I,
@@ -296,20 +316,34 @@ void Chip8::EmulateCycle()
 		case 0x55: /* FX55: Stores V0 to VX (including VX) in memory starting at address I.
 							The offset from I is increased by 1 for each value written, 
 							but I itself is left unmodified.  */
+			for (int i = 0; i <= X; ++i)
+			{
+				memory[I + i] = V[i];
+			}
+
+			I += X + 1;
 			break;
 		case 0x65: /* FX65: Fills V0 to VX (including VX) with values from memory 
 							starting at address I. The offset from I is increased by 1 
 							for each value written, but I itself is left unmodified.*/
+			for (int i = 0; i <= X; ++i)
+			{
+				V[i] = memory[I + i];
+			}
+
+			I += X + 1;
 			break;
 		default:
+			std::cout << "[ERROR]: Unknown opcode: 0x" << opcode << '\n';
 			break;
 		}
 		break;
 	default:
+		std::cout << "[ERROR]: Unknown opcode: 0x" << opcode << '\n';
 		break;
 	}
 
-	pc = (pc + 2) & MEMORYSIZE;
+	pc = (pc + 2) & MEMORYSIZE - 1;
 
 	if (delay_timer > 0)
 	{

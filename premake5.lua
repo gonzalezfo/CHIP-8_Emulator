@@ -22,3 +22,8 @@ solution("CHIP-8")
     files { "src/*.cpp", "include/*.h" }
     libdirs { "deps/include/SDL2-2.0.14/lib/x64" }
     links {"SDL2"}
+
+    postbuildcommands
+    {
+      ("{COPY} ../deps/include/SDL2-2.0.14/lib/x64/SDL2.dll" .. " ../bin")
+    }
