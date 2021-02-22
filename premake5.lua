@@ -21,7 +21,7 @@ solution("CHIP-8")
     kind "ConsoleApp"
     files { "src/*.cpp", "include/*.h" }
     libdirs { "deps/include/SDL2-2.0.14/lib/x64" }
-    links {"SDL2"}
+    links {"SDL2", "SDL2main", "SDL2test"}
 
     postbuildcommands
     {
