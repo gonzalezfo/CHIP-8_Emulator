@@ -37,16 +37,11 @@ void Chip8::Initialize()
 	SDL_memset(memory, 0x0, sizeof(memory));
 
 	// Load fontset
-	for (int i = 0; i < 80; ++i)
-	{
-	    memory[i] = chip8_fontset[i];
-	}
+	SDL_memcpy(memory + 0x50, chip8_fontset, 80);
 
 	// Reset timers
 	delay_timer = 0;
 	sound_timer = 0;
-
-	drawFlag = true;
 
 	srand(time(NULL));
 
@@ -72,13 +67,12 @@ bool Chip8::LoadGame(const std::string& filepath)
 		return false;
 	}
 
-	file.close();
-
 	// Copy file content into memory from 0x200 == 512
 	for (int i = 0; i < content.size(); ++i)
 	{
-		memory[i + 512] = content[i];
+		memory[i + 0x200] = content[i];
 	}
+	file.close();
 	return true;
 }
 
@@ -86,6 +80,8 @@ void Chip8::EmulateCycle()
 {
 	// Fetch opcode
 	opcode = memory[pc] << 8 | memory[pc + 1];
+	pc = (pc + 2) & 0xFFF;
+
 
 	uint16_t NNN	= opcode & 0x0FFF;		// address
 	uint8_t NN		= opcode & 0xFF;		// 8-bit constant
@@ -100,8 +96,7 @@ void Chip8::EmulateCycle()
 	case 0:
 		if (opcode == 0x00E0) // 00E0: Clears the screen.
 		{
-			SDL_memset(gfx, 0x0, sizeof(gfx));
-			drawFlag = true;
+			SDL_memset(gfx, 0x0, 2048);
 		}
 		else if (opcode == 0x00EE) // 00EE: Returns from a subroutine
 		{
@@ -124,26 +119,26 @@ void Chip8::EmulateCycle()
 	case 3: // 3XNN: Skips the next instruction if VX equals NN.
 		if (V[X] == NN)
 		{
-			pc = (pc + 2) & MEMORYSIZE - 1;
+			pc = (pc + 2) & 0xFFF;
 		}
 		break;
 	case 4: // 4XNN: Skips the next instruction if VX doesn't equal NN
 		if (V[X] != NN)
 		{
-			pc = (pc + 2) & MEMORYSIZE - 1;
+			pc = (pc + 2) & 0xFFF;
 		}
 		break;
 	case 5: // 5XY0: Skips the next instruction if VX equals VY
 		if (V[X] == V[Y])
 		{
-			pc = (pc + 2) & MEMORYSIZE - 1;
+			pc = (pc + 2) & 0xFFF;
 		}
 		break;
 	case 6: // 6XNN: Sets VX to NN
 		V[X] = NN;
 		break;
 	case 7: // 7XNN: Adds NN to VX. (Carry flag is not changed)
-		V[X] = (V[X] + NN);
+		V[X] = (V[X] + NN) & 0xFF;
 		break;
 	case 8:
 		switch (N)
@@ -152,53 +147,32 @@ void Chip8::EmulateCycle()
 			V[X] = V[Y];
 			break;
 		case 1: // 8XY1: Sets VX to VX or VY. (Bitwise OR operation)
-			V[X] = V[X] | V[Y];
+			V[X] |= V[Y];
 			break;
 		case 2: // 8XY2: Sets VX to VX and VY. (Bitwise AND operation)
-			V[X] = V[X] & V[Y];
+			V[X] &= V[Y];
 			break;
 		case 3: // 8XY3: Sets VX to VX xor VY.
-			V[X] = V[X] ^ V[Y];
+			V[X] ^= V[Y];
 			break;
 		case 4: // 8XY4: Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
-			if (V[Y] > (NN - V[X]))
-			{
-				V[N] = 1; //carry
-			}
-			else
-			{
-				V[N] = 0;
-			}
+			V[0xF] = (V[X] > V[X] + V[Y]);
 			V[X] += V[Y];
 			break;
 		case 5: // 8XY5: VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
-			if (V[Y] > V[X])
-			{
-				V[N] = 0; //borrow
-			}
-			else
-			{
-				V[N] = 1;
-			}
+			V[0xF] = (V[X] > V[Y]);
 			V[X] -= V[Y];
 			break;
 		case 6: // 8XY6: Stores the least significant bit of VX in VF and then shifts VX to the right by 1
-			V[N] = V[X] & 0x1;
+			V[0xF] = (V[X] & 1);
 			V[X] >>= 1;
 			break;
 		case 7: // 8XY7: Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
-			if (V[X] > V[Y])
-			{
-				V[N] = 0; // borrow
-			}
-			else
-			{
-				V[N] = 1;
-			}
+			V[0xF] = V[Y] > V[X];
 			V[X] = V[Y] - V[X];
 			break;
 		case 0xE: // 8XYE: Stores the most significant bit of VX in VF and then shifts VX to the left by 1
-			V[N] = V[X] >> 7;
+			V[0xF] = ((V[X] & 0x80) != 0);
 			V[X] <<= 1;
 			break;
 		default:
@@ -209,14 +183,14 @@ void Chip8::EmulateCycle()
 	case 9: // 9XY0: Skips the next instruction if VX doesn't equal VY
 		if (V[X] != V[Y])
 		{
-			pc = (pc + 2) & MEMORYSIZE - 1;
+			pc = (pc + 2) & 0xFFF;
 		}
 		break;
 	case 0xA: // ANNN: Sets I to the address NNN
 		I = NNN;
 		break;
 	case 0xB: // BNNN: Jumps to the address NNN plus V0.
-		pc = (NNN + V[0]) & MEMORYSIZE - 1;
+		pc = (NNN + V[0]) & 0xFFF;
 		break;
 	case 0xC: // CXNN: Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
 		V[X] = rand() & NN;
@@ -227,30 +201,21 @@ void Chip8::EmulateCycle()
 					   execution of this instruction.As described above, VF is set to 1
 					   if any screen pixels are flipped from set to unset when the sprite is drawn,
 					   and to 0 if that doesn’t happen.*/
-	{
-		unsigned short x = V[X];
-		unsigned short y = V[Y];
-		unsigned short height = opcode & 0x000F;
-		unsigned short pixel;
-
-		V[N] = 0; // Reset register VF
-		for (int yline = 0; yline < height; yline++) // Loop over rows
+		V[15] = 0;
+		for (int j = 0; j < N; j++)
 		{
-			pixel = memory[I + yline]; // Get pixel starting at I
-			for (int xline = 0; xline < 8; xline++) // Loop over 8 bytes of the row
+			uint8_t sprite = memory[I + j];
+			for (int i = 0; i < 8; ++i)
 			{
-				if ((pixel & (0x80 >> xline)) != 0)
-				{
-					if (gfx[(x + xline + ((y + yline) * 64))] == 1)
-					{
-						V[N] = 1;
-					}
-					gfx[x + xline + ((y + yline) * 64)] ^= 1;
-				}
+				int px = (V[X] + i) & 63;
+				int py = (V[Y] + j) & 31;
+				int pos = 64 * py + px;
+				int pixel = (sprite & (1 << (7 - i))) != 0;
+
+				V[15] |= (gfx[pos] & pixel);
+				gfx[pos] ^= pixel;
 			}
 		}
-		drawFlag = true;
-	}
 		break; 
 	case 0xE:
 		if (NN == 0x9E) // EX9E: Skips the next instruction if the key stored in VX is pressed. 
@@ -305,7 +270,7 @@ void Chip8::EmulateCycle()
 			break;
 		case 0x29: /* FX29: Sets I to the location of the sprite for the character in VX. 
 							Characters 0-F (in hexadecimal) are represented by a 4x5 font. */
-			I = V[X] * 0x5;
+			I = 0x50 + (V[X] & 0xF) * 5;
 			break;
 		case 0x33: /* FX33: Stores the binary-coded decimal representation of VX, 
 							with the most significant of three digits at the address in I,
@@ -313,8 +278,7 @@ void Chip8::EmulateCycle()
 							digit at I plus 2. */
 			memory[I] = V[X] / 100;
 			memory[I + 1] = (V[X] / 10) % 10;
-			memory[I + 2] = (V[X] % 100) % 10;
-			pc += 2;
+			memory[I + 2] = V[X] % 10;
 			break;
 		case 0x55: /* FX55: Stores V0 to VX (including VX) in memory starting at address I.
 							The offset from I is increased by 1 for each value written, 
@@ -346,7 +310,6 @@ void Chip8::EmulateCycle()
 		break;
 	}
 
-	pc = (pc + 2) & MEMORYSIZE - 1;
 
 	if (delay_timer > 0)
 	{
@@ -367,7 +330,7 @@ void Chip8::Expansion(unsigned char* from, uint32_t* to)
 {
 	for (int i = 0; i < 2048; ++i)
 	{
-		to[i] = from[i] ? -1 : 0;
+		to[i] = (from[i]) ? -1 : 0;
 	}
 }
 

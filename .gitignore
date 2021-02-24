@@ -2,9 +2,11 @@
 .vs/
 bin/
 build/
+data/
 
 # Files
 *.user
 *.exe
 *.sln
+*.ch8
 
