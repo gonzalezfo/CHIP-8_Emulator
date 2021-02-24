@@ -2,10 +2,8 @@
 
 #include <fstream>
 #include <sstream>
-#include <iostream>
 #include <vector>
-#include <time.h>
-#include <stdlib.h>
+
 
 #include "SDL_stdinc.h"
 
@@ -107,16 +105,21 @@ void Chip8::EmulateCycle()
 		}
 		else if (opcode == 0x00EE) // 00EE: Returns from a subroutine
 		{
-			--sp;
-			pc = stack[sp];
+			if (sp > 0)
+			{
+				pc = stack[--sp];
+			}
 		}
 		break;
 	case 1: // 1NNN: Jumps to address NNN
 		pc = NNN;
 		break;
 	case 2: // 0x2NNN: Calls subroutine at NNN.
-		stack[sp] = pc;
-		++sp;
+		if (sp < 16)
+		{
+			stack[sp++] = pc;
+		}
+		pc = NNN;
 		break;
 	case 3: // 3XNN: Skips the next instruction if VX equals NN.
 		if (V[X] == NN)
@@ -213,10 +216,10 @@ void Chip8::EmulateCycle()
 		I = NNN;
 		break;
 	case 0xB: // BNNN: Jumps to the address NNN plus V0.
-		pc = NNN + V[0];
+		pc = (NNN + V[0]) & MEMORYSIZE - 1;
 		break;
 	case 0xC: // CXNN: Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
-		V[X] = (rand() % 0xFF) & (opcode & 0x00FF);
+		V[X] = rand() & NN;
 		break;
 	case 0xD: /* DXYN: Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels 
 					   and a height of N pixels.Each row of 8 pixels is read as bit - coded
@@ -357,6 +360,14 @@ void Chip8::EmulateCycle()
 			std::cout << "[SOUND TIMER ALERT]\n";
 		}
 		--sound_timer;
+	}
+}
+
+void Chip8::Expansion(unsigned char* from, uint32_t* to)
+{
+	for (int i = 0; i < 2048; ++i)
+	{
+		to[i] = from[i] ? -1 : 0;
 	}
 }
 

@@ -1,6 +1,10 @@
 #pragma once
 
 #include <string>
+#include <iostream>
+#include <time.h>
+#include <stdlib.h>
+
 
 #define MEMORYSIZE 4096
 
@@ -13,6 +17,7 @@ public:
 	void Initialize();
 	bool LoadGame(const std::string& filepath);
 	void EmulateCycle();
+	void Expansion(unsigned char* from, uint32_t* to);
 
 public:
 	unsigned short opcode; // 35 opcodes in total
