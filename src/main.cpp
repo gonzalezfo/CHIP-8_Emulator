@@ -1,8 +1,10 @@
 #include "chip8.h"
-#include "SDL.h"
+#include "utils.h"
 
 
 Chip8 chip8;
+Utils utils;
+
 
 int main(int argc, char* argv[])
 {
@@ -23,19 +25,10 @@ int main(int argc, char* argv[])
 	} while (!chip8.LoadGame(filename));
 
 
-	SDL_Init(SDL_INIT_EVERYTHING);
-	SDL_Window* window = SDL_CreateWindow("CHIP-8 Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 320, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-	SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
-	SDL_Surface* surface = SDL_CreateRGBSurface(0, 64, 32, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-	SDL_Event event;
+	utils.Init();
+	utils.ExpandTexture(chip8);
 
-	int pitch;
-	Uint32* pixels;
-	
-	SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
-	chip8.Expansion(chip8.gfx, (uint32_t*)pixels);
-	SDL_UnlockTexture(texture);
+	SDL_Event event;
 
 	int Quit = 0;
 	int last_tick = 0;
@@ -54,28 +47,34 @@ int main(int argc, char* argv[])
 		}
 
 		if (SDL_GetTicks() - cycles > 1) {
-			chip8.EmulateCycle();
+			if (chip8.wait_key == -1)
+			{
+				chip8.EmulateCycle(utils);
+			}
+			else
+			{
+				for (int key = 0; key <= 0xF; ++key)
+				{
+					if (utils.IsKeyDown(key))
+					{
+						chip8.V[(int)chip8.wait_key] = key;
+						chip8.wait_key = -1;
+						break;
+					}
+				}
+			}
 			cycles = SDL_GetTicks();
 		}
 
 		if (SDL_GetTicks() - last_tick > (1000 / 60))
 		{
-			SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch);
-			chip8.Expansion(chip8.gfx, (uint32_t*)pixels);
-			SDL_UnlockTexture(texture);
-
-			//SDL_RenderClear(renderer);
-			SDL_RenderCopy(renderer, texture, NULL, NULL);
-			SDL_RenderPresent(renderer);
-			//SDL_WaitEvent(&event);
+			utils.ExpandTexture(chip8);
+			utils.Render();
 			last_tick = SDL_GetTicks();
 		}
 	}
 	
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	SDL_DestroyTexture(texture);
-	SDL_Quit();
+	utils.Destroy();
 
 	return 0;
 }

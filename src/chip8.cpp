@@ -31,7 +31,6 @@ void Chip8::Initialize()
 
 	// Clear registers V0-VF
 	SDL_memset(V, 0x0, sizeof(V));
-	SDL_memset(key, 0x0, sizeof(key));
 
 	// Clear memory
 	SDL_memset(memory, 0x0, sizeof(memory));
@@ -42,6 +41,8 @@ void Chip8::Initialize()
 	// Reset timers
 	delay_timer = 0;
 	sound_timer = 0;
+
+	wait_key = -1;
 
 	srand(time(NULL));
 
@@ -76,7 +77,7 @@ bool Chip8::LoadGame(const std::string& filepath)
 	return true;
 }
 
-void Chip8::EmulateCycle()
+void Chip8::EmulateCycle(Utils utils)
 {
 	// Fetch opcode
 	opcode = memory[pc] << 8 | memory[pc + 1];
@@ -220,16 +221,16 @@ void Chip8::EmulateCycle()
 	case 0xE:
 		if (NN == 0x9E) // EX9E: Skips the next instruction if the key stored in VX is pressed. 
 		{
-			if (key[V[X]] != 0)
+			if (utils.IsKeyDown(V[X]))
 			{
-				pc += 4;
+				pc = (pc + 2) & 0xFFF;
 			}
 		}
 		else if (NN == 0xA1) // EXA1: Skips the next instruction if the key stored in VX isn't pressed.
 		{
-			if (key[V[X]] == 0)
+			if (!utils.IsKeyDown(V[X]))
 			{
-				pc += 4;
+				pc = (pc + 2) & 0xFFF;
 			}
 		}
 		break;
@@ -240,22 +241,7 @@ void Chip8::EmulateCycle()
 			V[X] = delay_timer;
 			break;
 		case 0x0A: // FX0A: A key press is awaited, and then stored in VX.
-		{
-			bool keyPress = false;
-
-			for (int i = 0; i < 16; ++i)
-			{
-				if (key[i] != 0)
-				{
-					V[X] = i;
-					keyPress = true;
-				}
-			}
-			if (!keyPress)
-			{
-				return;
-			}
-		}
+			wait_key = X;
 			break;
 		case 0x15: // FX15: Sets the delay timer to VX.
 			delay_timer = V[X];
@@ -318,10 +304,6 @@ void Chip8::EmulateCycle()
 
 	if (sound_timer > 0)
 	{
-		if (sound_timer == 1)
-		{
-			std::cout << "[SOUND TIMER ALERT]\n";
-		}
 		--sound_timer;
 	}
 }

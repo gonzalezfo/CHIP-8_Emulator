@@ -5,8 +5,12 @@
 #include <time.h>
 #include <stdlib.h>
 
+#include "SDL.h"
+#include "utils.h"
 
 #define MEMORYSIZE 4096
+
+class Utils;
 
 class Chip8
 {
@@ -16,7 +20,7 @@ public:
 
 	void Initialize();
 	bool LoadGame(const std::string& filepath);
-	void EmulateCycle();
+	void EmulateCycle(Utils utils);
 	void Expansion(unsigned char* from, uint32_t* to);
 
 public:
@@ -37,7 +41,7 @@ public:
 	unsigned short stack[16]; // Used to remember the current location before a jump is performed
 	unsigned short sp; // Stack pointer to the level of the stack
 
-	unsigned char key[16]; // HEX based keypad
+	char wait_key;
 
 	unsigned char chip8_fontset[80] =
 	{
